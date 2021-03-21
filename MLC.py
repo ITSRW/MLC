@@ -5,9 +5,7 @@ import time
 # from tqdm import tqdm
 
 np.set_printoptions(suppress=True)
-'''============分片蝴蝶混沌轨道堆栈聚集搜索算法  又称"Steins Gate算法",灵感来自于动漫《命运石之门》================'''
 
-'''核心函数：产生三个轨道'''
 def core(up,down,Z0,Step,Times,Aband):
     #lorenz
     Ox,Oy,Oz=1,1,Z0
@@ -65,7 +63,7 @@ def core(up,down,Z0,Step,Times,Aband):
 
     return TrackMat
 
-'''测试用函数'''
+'''test function'''
 # # 简单峰值函数，求解域为xoy界面上-3~3的方形区间
 # def F(mat):
 #     return 3 * (1 - mat[0]) ** 2 * np.exp(-(mat[0] ** 2) - (mat[1] + 1) ** 2) - 10 * (mat[0] / 5 - mat[0] ** 3 - mat[1] ** 5) * np.exp(
@@ -109,23 +107,18 @@ def F(mat):
 # def F(mat):
 #     return mat[0] + 10*np.sin(5*mat[0]) + 7*np.cos(4*mat[0])
 
-'''堆栈构建子算法(根据维数不同需要重新编写！考虑向全自动方向优化):遍历整个混沌轨道并依序将近优解压入栈中'''
-#Mat是混沌轨道矩阵，即解集矩阵，一行为一个解，一列为一个变量
 def stack_pushin(order,mat):
     transmat=np.array(mat).T
-    Stack=[transmat[0]]#把第一个混沌解作为栈底
-    Stack_value=[F(Stack[-1])]#给出栈底解值
-    #检验函数是否正确
-    # print(Stack_value)
-    # time.sleep(10)
-    #针对最小化问题
+    Stack=[transmat[0]]
+    Stack_value=[F(Stack[-1])]
+
     if order == "0":
         for point in range(1,len(transmat)):
             Z=F(transmat[point])
             if Z<Stack_value[-1]:
                 Stack.append(transmat[point])
                 Stack_value.append(Z)
-    #针对最大化问题
+
     elif order =="1":
         for point in range(1, len(transmat)):
             Z = F(transmat[point])
@@ -143,9 +136,7 @@ def stack_pushin(order,mat):
 
 
 
-'''多维位面聚集出栈子算法'''
 def assemble(Mat):
-    #将栈中元素出栈，计算最密聚集中心
     S=np.zeros((len(Mat),len(Mat)))
     Sa=[]
     for row in range(len(Mat)):
@@ -201,9 +192,7 @@ plt.ion()
 for iteration in (range(MaxIteration)):
 
     plt.cla()
-    # print("新周期：",up)
-    # print("新周期：",down)
-    # 初始混沌轨道和停机精确度设定
+
     z0 = 0.9 + np.random.random() / 10
     accu = 0.000001
     bias=0.001
@@ -213,7 +202,7 @@ for iteration in (range(MaxIteration)):
     step = 0.01
     times = 1000#2000个混沌点
     aband = 100
-    store=100#保留200底限
+    store=100
 
     times+=aband
 
@@ -226,35 +215,18 @@ for iteration in (range(MaxIteration)):
     points=[]
 
 
-    # plt.ion()
     while(True):
-        # plt.cla()
-        # 产生对应多维切片混沌轨道
         chaoticindex = core(up,down,z0,step,times,aband)
-
-        # 获取混沌轨道对应的解集（用于画图，此处不需要）
         originMap = F(chaoticindex)
 
-        #基于切片混沌轨道运行堆栈算法，找出若干近优点的坐标矩阵
         track,value=stack_pushin(order,chaoticindex)
         track=np.mat(track)
         value=np.mat(value).T
 
-        #构造用于聚集出栈的Mat
         Mat=np.hstack((track,value))
         Mat=np.array(Mat)
 
-        #聚集出栈，获得一个解
         points=assemble(Mat)
-        # points=Mat[-1]
-
-        # ax.scatter(chaoticindex[0],chaoticindex[1],originMap,alpha = 1/4)
-        # ax.scatter(Mat[:,0],Mat[:,1],Mat[:,-1], marker='^')
-        # plt.tick_params(labelsize=15)
-        # plt.tight_layout()
-        # plt.pause(0.1)
-        # print("Iteration:"+str(iteration)+"; ("+str(np.round(track1[-1],2))+ ","+str(np.round(track2[-1],2))+ ","+str(np.round(track3[-1],2))+ ","+str(np.round(track4[-1],2))+");F*="+str(np.round(value[-1],4)))
-
         delta.append(np.abs(lastsulotion - value[-1]))
         lastsulotion = F(points[:-1])
         '''停机条件'''
@@ -273,15 +245,11 @@ for iteration in (range(MaxIteration)):
                 down[index]=originDown[index]
             else:
                 down[index] = points[index] - Scope[index] * (speed ** count)
-        #密度指数式缩减防止堆栈过度聚集，同时提高算法速度
         times=(int)(times*speed_M)+store
 
-        # "屏障内"的世界线跳动
         z0+=bias
 
-    #添加“收束集”搜索结果
     SSS.append(np.round(points[:],4))
-    #比较“世界线”优劣
     if len(SSS)>1:
         if order=="1":
             if SSS[-1][-1]>output[-1]:
@@ -316,13 +284,9 @@ for iteration in (range(MaxIteration)):
         monitor.append(can[-1][-1])
         print("时间：",np.round(time.time()-time_start,2),";迭代：",iteration+1,":",SSS[-1])
 
-    '''自适应搜索域变异'''
-    #变异几率
     odd=np.random.random()
     reset=np.random.random()
-    #产生新解时
     if transsignal==1 or (reset>mutaterate*4 and reset<=mutaterate*5):
-        #计算新的搜索域，并保存到临时容器
         originUp = up = [bond] * Digital
         originDown = down = [-bond] * Digital
         for index in range(len(up)):
@@ -335,16 +299,11 @@ for iteration in (range(MaxIteration)):
             else:
                 t_down[index] = can[-1][index] - Scope[index] * (speed_G ** (np.log2(1+len(can))))
         print("上下界缩减：", np.vstack([t_up,t_down]))
-        # print("上界缩减：",t_up)
-        # print("下界缩减：",t_down)
     elif odd<=mutaterate*4:
         middle=(np.array(t_up)+np.array(t_down))/2
         d=((np.array(t_up)-np.array(t_down))/2)*speed_G
-        # print("验算1：",middle,d)
         t_up = middle+d
         t_down = middle-d
-        # print("上界震荡：",t_up)
-        # print("下界震荡：",t_down)
         print("上下界振荡：",  np.vstack([t_up,t_down]))
     up=t_up.copy()
     down=t_down.copy()
